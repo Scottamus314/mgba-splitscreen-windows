@@ -1,0 +1,36 @@
+name: Build Windows RetroArch Core
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Download mGBA Splitscreen source
+        uses: actions/checkout@v4
+        with:
+          repository: Spuds0588/mgba-splitscreen
+          ref: master
+
+      - name: Configure Windows build
+        run: cmake -S . -B build -A x64 -DLIBMGBA_ONLY=ON -DBUILD_LIBRETRO_SPLITSCREEN=ON -DBUILD_LIBRETRO=OFF -DBUILD_QT=OFF -DBUILD_SDL=OFF -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG -DCOLOR_16_BIT -DCOLOR_5_6_5"
+
+      - name: Compile RetroArch core
+        run: cmake --build build --config Release --target mgba_splitscreen_libretro --parallel 4
+
+      - name: Package core
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package/cores,package/info | Out-Null
+          $dll = Get-ChildItem build -Recurse -Filter mgba_splitscreen_libretro.dll | Select-Object -First 1
+          if (-not $dll) { throw "Core DLL was not generated" }
+          Copy-Item $dll.FullName package/cores/
+          Copy-Item src/platform/libretro-splitscreen/mgba_splitscreen_libretro.info package/info/
+
+      - name: Upload Windows core
+        uses: actions/upload-artifact@v4
+        with:
+          name: mgba-splitscreen-windows-x64
+          path: package/
+          if-no-files-found: error
