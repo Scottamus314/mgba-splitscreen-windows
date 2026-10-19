@@ -13,20 +13,36 @@ jobs:
           repository: Spuds0588/mgba-splitscreen
           ref: master
 
-      - name: Configure Windows build
-        run: cmake -S . -B build -A x64 -DLIBMGBA_ONLY=ON -DBUILD_LIBRETRO_SPLITSCREEN=ON -DBUILD_LIBRETRO=OFF -DBUILD_QT=OFF -DBUILD_SDL=OFF -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG -DCOLOR_16_BIT -DCOLOR_5_6_5"
+      - name: Install Windows cross-compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 cmake ninja-build
+
+      - name: Configure Windows x64 build
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc \
+            -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+            -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLIBMGBA_ONLY=ON \
+            -DBUILD_LIBRETRO_SPLITSCREEN=ON \
+            -DBUILD_LIBRETRO=OFF \
+            -DBUILD_QT=OFF \
+            -DBUILD_SDL=OFF \
+            -DCMAKE_C_FLAGS="-DCOLOR_16_BIT -DCOLOR_5_6_5"
 
       - name: Compile RetroArch core
-        run: cmake --build build --config Release --target mgba_splitscreen_libretro --parallel 4
+        run: cmake --build build --target mgba_splitscreen_libretro --parallel 4
 
-      - name: Package core
-        shell: pwsh
+      - name: Package Windows core
         run: |
-          New-Item -ItemType Directory -Force -Path package/cores,package/info | Out-Null
-          $dll = Get-ChildItem build -Recurse -Filter mgba_splitscreen_libretro.dll | Select-Object -First 1
-          if (-not $dll) { throw "Core DLL was not generated" }
-          Copy-Item $dll.FullName package/cores/
-          Copy-Item src/platform/libretro-splitscreen/mgba_splitscreen_libretro.info package/info/
+          mkdir -p package/cores package/info
+          DLL=$(find build -type f -name 'mgba_splitscreen_libretro.dll' -print -quit)
+          test -n "$DLL" || { echo "Windows DLL not generated"; exit 1; }
+          cp "$DLL" package/cores/
+          cp src/platform/libretro-splitscreen/mgba_splitscreen_libretro.info package/info/
 
       - name: Upload Windows core
         uses: actions/upload-artifact@v4
