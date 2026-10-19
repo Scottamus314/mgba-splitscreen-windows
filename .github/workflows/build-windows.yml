@@ -31,7 +31,7 @@ jobs:
             -DBUILD_LIBRETRO=OFF \
             -DBUILD_QT=OFF \
             -DBUILD_SDL=OFF \
-            -DCMAKE_C_FLAGS="-DCOLOR_16_BIT -DCOLOR_5_6_5"
+            -DCMAKE_C_FLAGS="-DCOLOR_16_BIT -DCOLOR_5_6_5 -DENABLE_DIRECTORIES"
 
       - name: Compile RetroArch core
         run: cmake --build build --target mgba_splitscreen_libretro --parallel 4
